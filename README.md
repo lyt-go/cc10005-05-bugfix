@@ -75,5 +75,25 @@ npm run dev
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
 
+## 数据分发状态机与连接器闸门
+
+分发任务只允许按 `草稿 → 任务审批中 → 执行中 → 已完成/已取消` 顺序推进，跳级一律拦截；
+`已完成`、`已取消` 是终态，不可再执行任何动作，取消后不会恢复成可执行状态。
+
+- 启动分发前强制校验引用的数据连接器：仅 `已就绪` 可投递，离线/测试中/无版本都会被拦下。
+- 「执行开始」与「连接器版本冻结」在同一把锁内原子完成；冻结失败任务保持原状态，
+  不会留下已执行却没有接入版本的任务。同一任务并发启动只允许一次真正执行。
+- 取消时保留取消原因、历史投递记录与尚未发送的分片清单。
+- 批量接口 `POST /api/exporttask/batch-create`、`POST /api/exporttask/batch-actions`
+  逐条独立处理，失败项单独返回原因，其余条目照常落各自状态。
+- 工作台数据走 `GET /api/exporttask/workbench`，详情走 `GET /api/exporttask/{id}`，
+  详情展示连接器最后连通时间与任务冻结版本。
+
+后端回归测试（仅依赖标准库）：
+
+```bash
+cd backend && .venv/bin/python -m unittest tests.test_exporttask_flow -v
+```
+
 领域：数据工程
 子方向：数据采集、爬虫与RPA

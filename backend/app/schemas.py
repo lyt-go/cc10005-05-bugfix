@@ -28,6 +28,33 @@ class EntryPayload(BaseModel):
     remark: str | None = None
 
 
+class BatchActionItem(BaseModel):
+    """批量动作里的一条：定位记录 + 动作 + 可选备注（如取消原因）。"""
+
+    entry_id: int
+    action: str
+    remark: str | None = None
+
+
+class BatchActionPayload(BaseModel):
+    """一次提交多条动作，逐条独立处理、逐条返回结果。"""
+
+    items: list[BatchActionItem] = Field(default_factory=list)
+
+
+class BatchCreatePayload(BaseModel):
+    """一次提交多条待登记记录（如多个数据连接器/分发任务/数据源标识组合）。"""
+
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class BatchResult(BaseModel):
+    total: int
+    success: int
+    failed: int
+    results: list[dict[str, Any]]
+
+
 
 class ConnectorEntry(BaseModel):
     """数据连接器明细结构。"""
